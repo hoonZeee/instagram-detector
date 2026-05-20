@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip3 --version)",
+      "Bash(pip3 install *)",
+      "Bash(playwright install *)",
+      "Bash(brew list *)",
+      "Bash(brew install *)",
+      "Bash(brew search *)",
+      "Bash(brew --prefix tcl-tk@8)",
+      "Bash(LDFLAGS=-L__TRACKED_VAR__/lib CPPFLAGS=-I__TRACKED_VAR__/include PKG_CONFIG_PATH=__TRACKED_VAR__/lib/pkgconfig PYTHON_CONFIGURE_OPTS='--with-tcltk-includes='\\\\''-I__TRACKED_VAR__/include'\\\\'' --with-tcltk-libs='\\\\''-L__TRACKED_VAR__/lib -ltcl8.6 -ltk8.6'\\\\''' pyenv install 3.11.9 --force)",
+      "Bash(python3 *)",
+      "Bash(screencapture -x /tmp/app_screenshot.png)",
+      "Bash(pkill -f \"python3 main.py\")"
+    ]
+  }
+}

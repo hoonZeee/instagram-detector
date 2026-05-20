@@ -1,0 +1,5 @@
+playwright==1.44.0
+customtkinter==5.2.2
+anthropic==0.28.0
+pyinstaller==6.8.0
+instagrapi==2.1.3
