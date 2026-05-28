@@ -27,13 +27,14 @@ class _GroupRow:
 
 
 class ResultView(ctk.CTkFrame):
-    def __init__(self, parent, session, post_url: str, comments: list[dict]):
+    def __init__(self, parent, session, post_url: str, comments: list[dict], on_back=None):
         super().__init__(parent, fg_color="transparent")
         self._session = session
         self._post_url = post_url
         self._comments = comments
         self._id_to_comment: dict[str, dict] = {c["id"]: c for c in comments}
-        self._rows: list[_GroupRow] = []  # 현재 표시 중인 그룹 행들
+        self._rows: list[_GroupRow] = []
+        self._on_back = on_back
         self._build_ui()
         self._run_detection()
 
@@ -55,7 +56,7 @@ class ResultView(ctk.CTkFrame):
         self._scroll.pack(fill="both", expand=True, padx=24, pady=8)
 
         btn_row = ctk.CTkFrame(self, fg_color="transparent")
-        btn_row.pack(pady=16)
+        btn_row.pack(pady=(8, 4))
         ctk.CTkButton(btn_row, text="전체 선택",  width=120, command=self._select_all).pack(side="left", padx=6)
         ctk.CTkButton(btn_row, text="선택 해제",  width=120, command=self._deselect_all).pack(side="left", padx=6)
         self._delete_btn = ctk.CTkButton(
@@ -64,6 +65,16 @@ class ResultView(ctk.CTkFrame):
             command=self._confirm_delete,
         )
         self._delete_btn.pack(side="left", padx=6)
+
+        if self._on_back:
+            ctk.CTkButton(
+                self, text="← 다른 게시물 탐지",
+                width=200, height=32,
+                fg_color="transparent", hover_color="#2a2a2a",
+                border_width=1, border_color="#555",
+                font=ctk.CTkFont(size=12),
+                command=self._on_back,
+            ).pack(pady=(0, 12))
 
     # ── 탐지 ─────────────────────────────────────────────────────────────────
 

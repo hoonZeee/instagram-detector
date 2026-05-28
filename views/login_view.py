@@ -74,9 +74,9 @@ class LoginView(ctk.CTkFrame):
 
     def _login_thread(self) -> None:
         try:
-            session = pw_run(lambda: open_instagram_login(on_waiting=self._set_status))
+            session, page = pw_run(lambda: open_instagram_login(on_waiting=self._set_status))
             if session:
-                self.after(0, lambda: self._on_login_success(session))
+                self.after(0, lambda: self._on_login_success(session, page))
             else:
                 self.after(0, lambda: self._on_error("로그인이 취소되었거나 실패했어요."))
         except Exception as e:

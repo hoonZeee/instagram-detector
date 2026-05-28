@@ -1,0 +1,50 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:        # 수동 실행 버튼
+  push:
+    tags: ['v*']            # v1.0 같은 태그 push 시 자동 실행
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 3.11 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 패키지 설치
+        run: pip install playwright==1.44.0 customtkinter==5.2.2 pyinstaller==6.8.0
+
+      - name: Playwright Chromium 설치
+        run: playwright install chromium
+
+      - name: PyInstaller 빌드
+        run: >
+          pyinstaller
+          --onedir
+          --windowed
+          --name instagram-detector
+          --collect-all customtkinter
+          --collect-all playwright
+          main.py
+
+      - name: Chromium 브라우저 번들에 복사
+        shell: pwsh
+        run: |
+          $src = "$env:LOCALAPPDATA\ms-playwright"
+          $dst = "dist\instagram-detector\pw-browsers"
+          Copy-Item -Recurse -Force $src $dst
+          Write-Host "번들 완료: $dst"
+
+      - name: 빌드 결과물 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: instagram-detector-windows
+          path: dist\instagram-detector\
+          retention-days: 90

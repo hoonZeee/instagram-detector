@@ -1,13 +1,13 @@
 import shutil
 from pathlib import Path
-from playwright.sync_api import sync_playwright, BrowserContext
+from playwright.sync_api import sync_playwright, BrowserContext, Page
 
 # Session is persisted here — same security model as keeping Instagram logged in Chrome
 _PROFILE_DIR = Path.home() / ".instagram_detector" / "browser_profile"
 
 _playwright = None
-_browser = None
 _context: BrowserContext | None = None
+_page: Page | None = None  # main browsing page — stays open throughout the session
 
 def _has_valid_session(context) -> bool:
     """Returns True if the context has a live Instagram session (sessionid cookie present)."""
@@ -26,13 +26,16 @@ PENDING_PATTERNS = (
 )
 
 
-def open_instagram_login(on_waiting=None) -> BrowserContext | None:
+def open_instagram_login(on_waiting=None) -> tuple[BrowserContext, Page] | tuple[None, None]:
     """
     Opens Instagram in a persistent browser profile.
     If already logged in, returns the session immediately without showing login UI.
     Credentials are never read by this app — only browser cookies are used.
+
+    Returns (context, page) — the page stays open so the user can browse Instagram
+    and the app can detect which post the user is viewing.
     """
-    global _playwright, _context
+    global _playwright, _context, _page
 
     _PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -58,8 +61,8 @@ def open_instagram_login(on_waiting=None) -> BrowserContext | None:
     if _has_valid_session(_context):
         if on_waiting:
             on_waiting("세션 복원 완료! 다시 로그인할 필요가 없어요.")
-        page.close()
-        return _context
+        _page = page  # keep page open for browsing
+        return _context, page
 
     # Need to log in
     page.goto("https://www.instagram.com/accounts/login/")
@@ -84,25 +87,28 @@ def open_instagram_login(on_waiting=None) -> BrowserContext | None:
                 break
             page.wait_for_timeout(1000)
         else:
-            return None
+            return None, None
 
         if on_waiting:
             on_waiting("로그인 완료! 세션이 저장됩니다.")
-        page.close()
-        return _context
+        _page = page  # keep page open for browsing
+        return _context, page
 
     except Exception:
-        return None
+        return None, None
 
 
 def close_session() -> None:
-    global _playwright, _context
+    global _playwright, _context, _page
     try:
+        if _page and not _page.is_closed():
+            _page.close()
         if _context:
             _context.close()
         if _playwright:
             _playwright.stop()
     finally:
+        _page = None
         _context = None
         _playwright = None
 
