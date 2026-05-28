@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from playwright.sync_api import sync_playwright, BrowserContext
 
@@ -94,7 +95,7 @@ def open_instagram_login(on_waiting=None) -> BrowserContext | None:
         return None
 
 
-def close_session():
+def close_session() -> None:
     global _playwright, _context
     try:
         if _context:
@@ -104,3 +105,13 @@ def close_session():
     finally:
         _context = None
         _playwright = None
+
+
+def clear_profile() -> None:
+    """
+    저장된 브라우저 프로필(세션 쿠키 포함)을 완전히 삭제한다.
+    다음 로그인 시 새 계정으로 처음부터 시작할 수 있다.
+    """
+    close_session()
+    if _PROFILE_DIR.exists():
+        shutil.rmtree(_PROFILE_DIR)
