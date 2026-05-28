@@ -147,26 +147,23 @@ def delete_comments(context: BrowserContext, post_url: str, comment_ids: list[st
             raise RuntimeError(f"게시물 ID를 가져올 수 없어요. 현재 URL: {page.url}")
         print(f"[DELETE DEBUG] media_id={media_id}")
 
-        for i, cid in enumerate(comment_ids):
-            if on_progress:
-                on_progress(f"삭제 중... ({i + 1}/{len(comment_ids)})")
-            success = _delete_via_api(page, media_id, cid, csrf, captured)
-            print(f"[DELETE] cid={cid} success={success}")
-            if success:
+        if on_progress:
+            on_progress(f"{len(comment_ids)}개 댓글 삭제 중...")
+
+        results = _bulk_delete(page, media_id, comment_ids, csrf, captured)
+        for r in results:
+            print(f"[DELETE] cid={r['cid']} success={r['ok']}")
+            if r["ok"]:
                 deleted += 1
-            page.wait_for_timeout(600)
 
     finally:
-        page.close()  # close() automatically removes all listeners
+        page.close()
 
     return deleted
 
 
-def _delete_via_api(page, media_id: str, comment_id: str, csrf: str, captured: dict) -> bool:
-    """Delete one comment via Instagram's private API, using captured auth headers."""
-    url = f"https://www.instagram.com/api/v1/web/comments/{media_id}/delete/{comment_id}/"
-
-    # Start with required headers, then overlay whatever Instagram's own JS used
+def _bulk_delete(page, media_id: str, comment_ids: list[str], csrf: str, captured: dict) -> list[dict]:
+    """Promise.all로 모든 댓글을 동시에 삭제한다."""
     headers = {
         "x-ig-app-id": "936619743392459",
         "x-csrftoken": csrf,
@@ -175,26 +172,24 @@ def _delete_via_api(page, media_id: str, comment_id: str, csrf: str, captured: d
     }
     headers.update({k: v for k, v in captured.items() if k and v})
 
-    result = page.evaluate(
-        """async ([url, headers]) => {
-            try {
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: headers,
-                    body: '',
-                    credentials: 'include',
-                });
-                const text = await res.text();
-                const isHtml = text.trimStart().startsWith('<');
-                return {status: res.status, html: isHtml, body: text.slice(0, 300)};
-            } catch(e) {
-                return {status: 0, html: false, body: String(e)};
-            }
+    return page.evaluate(
+        """async ([media_id, comment_ids, headers]) => {
+            const del = async (cid) => {
+                try {
+                    const res = await fetch(
+                        `https://www.instagram.com/api/v1/web/comments/${media_id}/delete/${cid}/`,
+                        {method: 'POST', headers, body: '', credentials: 'include'}
+                    );
+                    const text = await res.text();
+                    return {cid, ok: res.status === 200 && !text.trimStart().startsWith('<')};
+                } catch(e) {
+                    return {cid, ok: false};
+                }
+            };
+            return await Promise.all(comment_ids.map(del));
         }""",
-        [url, headers]
+        [media_id, comment_ids, headers]
     )
-
-    print(f"  [API] status={result['status']} html={result['html']} body={repr(result['body'][:120])}")
     return result["status"] == 200 and not result["html"]
 
 
