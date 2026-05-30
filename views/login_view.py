@@ -7,9 +7,13 @@ from playwright_worker import pw_run
 
 
 def _fmt_err(e: Exception) -> str:
-    """예외 메시지가 비어있어도 타입명을 포함해 보여준다."""
+    """예외 타입 + 메시지 + 발생 위치를 함께 보여준다."""
+    import traceback
+    tb = traceback.format_exc().strip().splitlines()
+    location = tb[-2].strip() if len(tb) >= 2 else ""
     msg = str(e).strip()
-    return msg if msg else type(e).__name__
+    label = msg if msg else type(e).__name__
+    return f"{type(e).__name__}: {label}\n{location}" if location else label
 
 
 class LoginView(ctk.CTkFrame):

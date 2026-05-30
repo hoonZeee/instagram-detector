@@ -6,6 +6,7 @@ so all browser calls are dispatched here via pw_run().
 import threading
 import queue
 
+
 class _Worker:
     def __init__(self):
         self._q: queue.Queue = queue.Queue()
@@ -13,12 +14,17 @@ class _Worker:
         self._thread.start()
 
     def _run(self):
-        # Playwright sync API 는 asyncio 루프가 없는 스레드에서만 동작한다.
-        # Windows PyInstaller 환경에서 스레드가 ProactorEventLoop 를 상속받는 경우
-        # NotImplementedError 가 발생하므로, 루프를 명시적으로 제거한다.
-        import sys, asyncio
-        if sys.platform == "win32":
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        # Playwright sync API 는 asyncio 루프가 실행 중이지 않은 스레드에서만 동작한다.
+        # WindowsSelectorEventLoopPolicy 는 쓰지 않는다 — SelectorEventLoop 는
+        # Windows 에서 subprocess 를 지원하지 않아 NotImplementedError 가 발생한다.
+        # 대신 현재 스레드의 이벤트 루프를 완전히 제거해 Playwright 가 자체 루프를 만들게 한다.
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if not loop.is_closed():
+                loop.close()
+        except RuntimeError:
+            pass
         asyncio.set_event_loop(None)
 
         while True:

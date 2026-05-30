@@ -6,10 +6,10 @@ if getattr(sys, 'frozen', False):
     _app_dir = os.path.dirname(sys.executable)
     os.environ['PLAYWRIGHT_BROWSERS_PATH'] = os.path.join(_app_dir, 'pw-browsers')
 
-# Windows에서 Playwright Sync API 와 asyncio ProactorEventLoop 충돌 방지
+# Windows PyInstaller: 멀티프로세스 서브프로세스 안전 초기화
 if sys.platform == "win32":
-    import asyncio
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    import multiprocessing
+    multiprocessing.freeze_support()
 
 import customtkinter as ctk
 from gui import App
