@@ -406,7 +406,8 @@ class ResultView(ctk.CTkFrame):
 
     def _do_delete(self, key, comment_ids: list[str], dialog: ctk.CTkToplevel) -> None:
         dialog.destroy()
-        self._tabs[key].delete_btn.configure(state="disabled", text="삭제 중...")
+        self._set_all_delete_btns(state="disabled")
+        self._status.configure(text=f"삭제 중입니다... ({len(comment_ids)}개)", text_color="gray")
         threading.Thread(
             target=self._delete_thread, args=(key, comment_ids), daemon=True
         ).start()
@@ -423,20 +424,22 @@ class ResultView(ctk.CTkFrame):
             self.after(0, lambda e=e: self._on_delete_error(key, str(e)))
 
     def _set_status(self, msg: str) -> None:
-        self.after(0, lambda: self._status.configure(text=msg))
+        self.after(0, lambda: self._status.configure(text=msg, text_color="gray"))
+
+    def _set_all_delete_btns(self, state: str) -> None:
+        for tab in self._tabs.values():
+            tab.delete_btn.configure(state=state, text="선택 삭제")
 
     def _on_delete_error(self, key, msg: str) -> None:
+        self._set_all_delete_btns(state="normal")
         self._status.configure(text=f"오류: {msg}", text_color="red")
-        self._tabs[key].delete_btn.configure(state="normal", text="선택 삭제")
 
     def _on_delete_done(self, key, count: int, deleted_ids: list[str]) -> None:
-        self._status.configure(text=f"{count}개 댓글 삭제 완료!", text_color="#2ecc71")
-        self._tabs[key].delete_btn.configure(state="normal", text="선택 삭제")
-        # 삭제된 댓글을 메모리에서 제거
+        self._set_all_delete_btns(state="normal")
+        self._status.configure(text=f"삭제 완료! {count}개 댓글이 삭제되었습니다.", text_color="#2ecc71")
         deleted_set = set(deleted_ids)
         self._comments = [c for c in self._comments if c["id"] not in deleted_set]
         self._id_to_comment = {c["id"]: c for c in self._comments}
-        # 탐지 결과, 전체 댓글, 마지막 검색 전부 갱신
         self._run_detection()
         self._render_all_tab()
         if self._last_keyword:

@@ -38,9 +38,7 @@ def fetch_comments(context: BrowserContext, post_url: str, on_progress=None) -> 
         page.wait_for_timeout(2000)
 
         csrf = _get_csrf(context)
-        print(f"[DEBUG] csrf={'OK' if csrf else 'MISSING'} page_url={page.url}")
         media_id = _get_media_id(page)
-        print(f"[DEBUG] media_id={media_id}")
         if not media_id:
             # Fallback: extract from page URL after possible redirect
             import re as _re
@@ -52,12 +50,15 @@ def fetch_comments(context: BrowserContext, post_url: str, on_progress=None) -> 
 
         comments: list[dict] = []
         collected_ids: set[str] = set()
-        min_id: str | None = None
+        cursor: str | None = None
 
-        while True:
-            url = f"https://www.instagram.com/api/v1/media/{media_id}/comments/?can_support_threading=true&permalink_enabled=false"
-            if min_id:
-                url += f"&min_id={min_id}"
+        for _ in range(50):  # 안전 상한: 댓글 50페이지(수천 개) 초과 방지
+            url = (
+                f"https://www.instagram.com/api/v1/media/{media_id}/comments/"
+                f"?can_support_threading=true&permalink_enabled=false"
+            )
+            if cursor:
+                url += f"&min_id={cursor}"
 
             result = page.evaluate(
                 """async ([url, csrf]) => {
@@ -78,15 +79,16 @@ def fetch_comments(context: BrowserContext, post_url: str, on_progress=None) -> 
                 raise RuntimeError(f"댓글 API 오류 (status {result['status']}): {result['body'][:200]}")
 
             body = result["body"].strip()
-            print(f"[DEBUG] status={result['status']} body_len={len(body)} body_preview={repr(body[:120])}")
             if not body:
                 raise RuntimeError("댓글 API가 빈 응답을 반환했어요. 세션이 만료됐을 수 있어요.")
             if body.startswith("<!"):
                 raise RuntimeError("댓글 API가 HTML을 반환했어요. media_id가 잘못됐거나 세션이 만료됐을 수 있어요.")
 
             data = json.loads(body)
+            page_comments = data.get("comments", [])
 
-            for c in data.get("comments", []):
+            before = len(collected_ids)
+            for c in page_comments:
                 cid = str(c.get("pk") or c.get("id") or "")
                 if cid and cid not in collected_ids:
                     collected_ids.add(cid)
@@ -100,8 +102,12 @@ def fetch_comments(context: BrowserContext, post_url: str, on_progress=None) -> 
             if on_progress:
                 on_progress(f"댓글 {len(comments)}개 수집 중...")
 
-            if data.get("has_more_comments") and data.get("next_min_id"):
-                min_id = data["next_min_id"]
+            # next_min_id 가 있으면 has_more_comments 값과 무관하게 계속 가져옴
+            # (Instagram 이 has_more_comments 를 가끔 잘못 내려보내는 경우 대비)
+            next_cursor = data.get("next_min_id")
+            new_count = len(collected_ids) - before
+            if next_cursor and new_count > 0:
+                cursor = next_cursor
             else:
                 break
 
@@ -135,8 +141,6 @@ def delete_comments(context: BrowserContext, post_url: str, comment_ids: list[st
         page.goto(post_url, wait_until="domcontentloaded", timeout=30_000)
         page.wait_for_timeout(3000)  # let Instagram's JS fire its initial API calls
 
-        print(f"[DELETE DEBUG] captured header keys: {list(captured.keys())}")
-
         csrf = _get_csrf(context)
         media_id = _get_media_id(page)
         if not media_id:
@@ -145,14 +149,12 @@ def delete_comments(context: BrowserContext, post_url: str, comment_ids: list[st
                 media_id = _shortcode_to_media_id(m.group(1))
         if not media_id:
             raise RuntimeError(f"게시물 ID를 가져올 수 없어요. 현재 URL: {page.url}")
-        print(f"[DELETE DEBUG] media_id={media_id}")
 
         if on_progress:
             on_progress(f"{len(comment_ids)}개 댓글 삭제 중...")
 
         results = _bulk_delete(page, media_id, comment_ids, csrf, captured)
         for r in results:
-            print(f"[DELETE] cid={r['cid']} success={r['ok']}")
             if r["ok"]:
                 deleted += 1
 

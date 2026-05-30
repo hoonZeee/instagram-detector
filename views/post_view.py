@@ -211,7 +211,6 @@ class PostView(ctk.CTkFrame):
             )
             self.after(0, lambda: self._on_post_selected(url, comments))
         except Exception as e:
-            import traceback; traceback.print_exc()
             self.after(0, lambda e=e: self._on_fetch_error(str(e)))
 
     def _on_fetch_error(self, msg: str) -> None:
