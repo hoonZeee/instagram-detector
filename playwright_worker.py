@@ -13,6 +13,14 @@ class _Worker:
         self._thread.start()
 
     def _run(self):
+        # Playwright sync API 는 asyncio 루프가 없는 스레드에서만 동작한다.
+        # Windows PyInstaller 환경에서 스레드가 ProactorEventLoop 를 상속받는 경우
+        # NotImplementedError 가 발생하므로, 루프를 명시적으로 제거한다.
+        import sys, asyncio
+        if sys.platform == "win32":
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.set_event_loop(None)
+
         while True:
             item = self._q.get()
             if item is None:
