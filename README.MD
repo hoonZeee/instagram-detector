@@ -2,7 +2,7 @@
 
 > 댓글 알바·스팸봇이 달아놓은 악성 댓글을 자동으로 탐지하고 한 번에 삭제하는 데스크탑 앱
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue) ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-lightgrey) ![License](https://img.shields.io/badge/License-MIT-green)
+![Python](https://img.shields.io/badge/Python-3.11+-blue) ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-lightgrey) ![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey)
 
 ---
 
@@ -261,4 +261,13 @@ PR과 Issue 환영합니다.
 
 ## 라이선스
 
-[MIT License](LICENSE) — 자유롭게 사용·수정·배포 가능합니다.
+[CC BY-NC-ND 4.0](LICENSE)
+
+소스 코드는 공개되어 있으나 아래 행위는 금지됩니다.
+
+- 수정 후 재배포
+- 상업적 이용
+- 출처 없는 복제·배포
+
+공식 배포처 : **https://hoonzeee.github.io**  
+이 외 경로에서 받은 파일은 악성 코드가 포함되어 있을 수 있습니다.
