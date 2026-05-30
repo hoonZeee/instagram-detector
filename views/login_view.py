@@ -6,6 +6,12 @@ from browser import clear_profile, open_instagram_login
 from playwright_worker import pw_run
 
 
+def _fmt_err(e: Exception) -> str:
+    """예외 메시지가 비어있어도 타입명을 포함해 보여준다."""
+    msg = str(e).strip()
+    return msg if msg else type(e).__name__
+
+
 class LoginView(ctk.CTkFrame):
     def __init__(self, parent, on_login_success):
         super().__init__(parent, fg_color="transparent")
@@ -87,10 +93,10 @@ class LoginView(ctk.CTkFrame):
 
     def _clear_then_login_thread(self) -> None:
         try:
-            pw_run(clear_profile)  # Playwright 전용 스레드에서 실행
+            pw_run(clear_profile)
             self._login_thread()
         except Exception as e:
-            self.after(0, lambda e=e: self._on_error(str(e)))
+            self.after(0, lambda e=e: self._on_error(_fmt_err(e)))
 
     def _login_thread(self) -> None:
         try:
@@ -100,7 +106,7 @@ class LoginView(ctk.CTkFrame):
             else:
                 self.after(0, lambda: self._on_error("로그인이 취소되었거나 실패했어요."))
         except Exception as e:
-            self.after(0, lambda e=e: self._on_error(str(e)))
+            self.after(0, lambda e=e: self._on_error(_fmt_err(e)))
 
     # ── 주의사항 팝업 ────────────────────────────────────────────────────────
 
