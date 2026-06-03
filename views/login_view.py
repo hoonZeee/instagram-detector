@@ -2,7 +2,7 @@ import threading
 
 import customtkinter as ctk
 
-from browser import clear_profile, open_instagram_login
+from browser import open_instagram_login
 from playwright_worker import pw_run
 
 
@@ -41,16 +41,6 @@ class LoginView(ctk.CTkFrame):
         )
         self._login_btn.pack(pady=8)
 
-        # 다른 계정으로 전환 — 저장된 세션을 지우고 새로 로그인
-        ctk.CTkButton(
-            self, text="다른 계정으로 로그인",
-            width=260, height=36,
-            fg_color="transparent", hover_color="#2a2a2a",
-            border_width=1, border_color="#555",
-            font=ctk.CTkFont(size=13),
-            command=self._clear_and_login,
-        ).pack(pady=(4, 0))
-
         self._status = ctk.CTkLabel(
             self, text="", text_color="gray", font=ctk.CTkFont(size=13)
         )
@@ -58,7 +48,7 @@ class LoginView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self,
-            text="브라우저가 열리면 직접 로그인해주세요.\n비밀번호는 이 앱에 저장되지 않습니다.",
+            text="브라우저가 열리면 직접 로그인해주세요.\n비밀번호와 로그인 세션은 저장되지 않습니다.",
             justify="center", text_color="#555555", font=ctk.CTkFont(size=12),
         ).pack(pady=(12, 0))
 
@@ -88,19 +78,6 @@ class LoginView(ctk.CTkFrame):
         self._set_buttons_enabled(False)
         self._status.configure(text="")
         threading.Thread(target=self._login_thread, daemon=True).start()
-
-    def _clear_and_login(self) -> None:
-        """저장된 세션을 완전히 지우고 새 로그인 창을 연다."""
-        self._set_buttons_enabled(False)
-        self._status.configure(text="기존 세션 삭제 중...", text_color="gray")
-        threading.Thread(target=self._clear_then_login_thread, daemon=True).start()
-
-    def _clear_then_login_thread(self) -> None:
-        try:
-            pw_run(clear_profile)
-            self._login_thread()
-        except Exception as e:
-            self.after(0, lambda e=e: self._on_error(_fmt_err(e)))
 
     def _login_thread(self) -> None:
         try:

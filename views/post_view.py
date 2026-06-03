@@ -1,6 +1,5 @@
 import re
 import threading
-from pathlib import Path
 
 import customtkinter as ctk
 
@@ -8,22 +7,6 @@ from instagram import fetch_comments
 from playwright_worker import pw_run
 
 _POST_RE = re.compile(r"instagram\.com/(?:p|reel)/([A-Za-z0-9_-]+)")
-_USERNAME_FILE = Path.home() / ".instagram_detector" / "last_username.txt"
-
-
-def _load_saved_username() -> str:
-    try:
-        return _USERNAME_FILE.read_text(encoding="utf-8").strip()
-    except Exception:
-        return ""
-
-
-def _save_username(username: str) -> None:
-    try:
-        _USERNAME_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _USERNAME_FILE.write_text(username.strip(), encoding="utf-8")
-    except Exception:
-        pass
 
 
 class PostView(ctk.CTkFrame):
@@ -55,9 +38,6 @@ class PostView(ctk.CTkFrame):
         ctk.CTkLabel(id_row, text="인스타 아이디", width=100, anchor="e").pack(side="left", padx=(0, 8))
         self._username_entry = ctk.CTkEntry(id_row, width=260, height=38, placeholder_text="예: ji__bboo")
         self._username_entry.pack(side="left")
-        saved = _load_saved_username()
-        if saved:
-            self._username_entry.insert(0, saved)
 
         # 프로필 이동 버튼
         self._goto_btn = ctk.CTkButton(
@@ -110,7 +90,6 @@ class PostView(ctk.CTkFrame):
         if not username:
             self._set_status("인스타 아이디를 입력해주세요.", "orange")
             return
-        _save_username(username)
         self._goto_btn.configure(state="disabled", text="이동 중...")
         self._set_status("브라우저에서 프로필 페이지로 이동 중...", "gray")
         url = f"https://www.instagram.com/{username}/"

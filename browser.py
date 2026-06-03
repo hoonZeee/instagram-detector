@@ -1,13 +1,13 @@
-import shutil
-from pathlib import Path
 from playwright.sync_api import sync_playwright, BrowserContext, Page
 
-# Session is persisted here — same security model as keeping Instagram logged in Chrome
-_PROFILE_DIR = Path.home() / ".instagram_detector" / "browser_profile"
+# 보안상 로그인 세션을 디스크에 저장하지 않는다.
+# 브라우저 컨텍스트는 메모리에만 유지되며, 앱을 종료하면 세션은 사라진다.
 
 _playwright = None
+_browser = None
 _context: BrowserContext | None = None
 _page = None
+
 
 def _has_valid_session(context) -> bool:
     """Returns True if the context has a live Instagram session (sessionid cookie present)."""
@@ -28,39 +28,24 @@ PENDING_PATTERNS = (
 
 def open_instagram_login(on_waiting=None) -> tuple[BrowserContext, Page] | tuple[None, None]:
     """
-    Opens Instagram in a persistent browser profile.
+    Opens Instagram in a fresh in-memory browser context.
     Keeps the browser page open after login and returns (context, page).
-    Credentials are never read by this app — only browser cookies are used.
+    Nothing is written to disk — credentials and session cookies live in memory only.
     """
-    global _playwright, _context, _page
-
-    _PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    global _playwright, _browser, _context, _page
 
     _playwright = sync_playwright().start()
 
-    _context = _playwright.chromium.launch_persistent_context(
-        str(_PROFILE_DIR),
+    _browser = _playwright.chromium.launch(
         headless=False,
-        viewport={"width": 430, "height": 820},
         args=["--disable-blink-features=AutomationControlled"],
     )
+    _context = _browser.new_context(viewport={"width": 430, "height": 820})
 
-    page = _context.pages[0] if _context.pages else _context.new_page()
+    page = _context.new_page()
 
-    if on_waiting:
-        on_waiting("기존 세션 확인 중...")
-
-    page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_timeout(1500)
-
-    if _has_valid_session(_context):
-        if on_waiting:
-            on_waiting("세션 복원 완료! 브라우저가 열립니다.")
-        _page = page
-        return _context, page
-
-    # Need to log in
-    page.goto("https://www.instagram.com/accounts/login/")
+    # 디스크 세션이 없으므로 항상 로그인부터 시작한다.
+    page.goto("https://www.instagram.com/accounts/login/", wait_until="domcontentloaded", timeout=30_000)
     if on_waiting:
         on_waiting("브라우저에서 로그인해주세요...")
 
@@ -93,25 +78,18 @@ def open_instagram_login(on_waiting=None) -> tuple[BrowserContext, Page] | tuple
 
 
 def close_session() -> None:
-    global _playwright, _context, _page
+    global _playwright, _browser, _context, _page
     try:
         if _page:
             _page.close()
         if _context:
             _context.close()
+        if _browser:
+            _browser.close()
         if _playwright:
             _playwright.stop()
     finally:
         _page = None
         _context = None
+        _browser = None
         _playwright = None
-
-
-def clear_profile() -> None:
-    """
-    저장된 브라우저 프로필(세션 쿠키 포함)을 완전히 삭제한다.
-    다음 로그인 시 새 계정으로 처음부터 시작할 수 있다.
-    """
-    close_session()
-    if _PROFILE_DIR.exists():
-        shutil.rmtree(_PROFILE_DIR)
